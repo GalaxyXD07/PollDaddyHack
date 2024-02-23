@@ -1,19 +1,22 @@
-
-import requests, re, json, time, random
+import requests, re, json, time, random, threading
 requests.packages.urllib3.disable_warnings()
 
-# Created by Alex Beals
-# Last updated: February 20, 2016
+
+
 
 base_url = "https://polldaddy.com/poll/"
 redirect = ""
 
+
 useragents = []
 current_useragent = ""
+
 
 proxies = []
 current_proxy = {"http":""}
 current_proxy_num = -1
+
+
 
 
 def get_all_useragents():
@@ -22,10 +25,12 @@ def get_all_useragents():
         useragents.append(line.rstrip('\n').rstrip('\r'))
     f.close()
 
+
 def choose_useragent():
     k = random.randint(0, len(useragents)-1)
     current_useragent = useragents[k]
     #print current_useragent
+
 
 def get_all_proxies():
     f = open("proxy.txt", "r")
@@ -33,10 +38,13 @@ def get_all_proxies():
         proxies.append(line.rstrip('\n').rstrip('\r'))
     f.close()
 
+
 def choose_proxy():
     k = random.randint(0, len(proxies)-1)
     current_num = k
     current_proxy["http"] = proxies[k]
+
+
 
 
 def vote_once(form, value):
@@ -45,14 +53,16 @@ def vote_once(form, value):
     choose_useragent()
     redirect = {"Referer": base_url + str(form) + "/", "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8", "User-Agent": current_useragent, "Upgrade-Insecure-Requests":"1", "Accept-Encoding": "gzip, deflate, sdch", "Accept-Language": "en-US,en;q=0.8"}
 
+
     # Chooses proxy randomly
     choose_proxy()
     try:
         init = c.get(base_url + str(form) + "/", headers=redirect, verify=False, proxies=current_proxy)
     except:
-        print "error with proxy"
+        print ("error with proxy")
         #proxies.remove(current_proxy_num)
         return None
+
 
     # Search for the data-vote JSON object
     data = re.search("data-vote=\"(.*?)\"",init.text).group(1).replace('&quot;','"')
@@ -64,11 +74,13 @@ def vote_once(form, value):
     try:
         send = c.get(request, headers=redirect, verify=False, proxies=current_proxy)
     except:
-        print "error with proxy"
+        print ("error with proxy")
         #proxies.remove(current_proxy_num)
         return None
 
+
     return ("revoted" in send.url)
+
 
 def vote(form, value, times, wait_min = None, wait_max = None):
     global redirect
@@ -82,23 +94,46 @@ def vote(form, value, times, wait_min = None, wait_max = None):
             if wait_min and wait_max:
                 seconds = random.randint(wait_min, wait_max)
             else:
-                seconds = 3
+                seconds = .22346432
 
-            print "Voted (time number " + str(i) + ")!"
+
+                print ("voted (time number" + str(i) + ")!" + str(current_proxy))
             time.sleep(seconds)
         else:
-            print "Locked.  Sleeping for 60 seconds."
+            print ("Locked.  Sleeping for 60 seconds.")
             i-=1
             time.sleep(60)
         i += 1
 
+
 # Initialize these to the specific form and how often you want to vote
-poll_id = 0
-answer_id = 0
-number_of_votes = 10
+poll_id = 13378179
+answer_id = 59892767
+number_of_votes = 10000
 wait_min = None
 wait_max = None
 
+
 get_all_proxies()
 get_all_useragents()
+
+
+t1 = threading.Thread(target=vote, args=(poll_id, answer_id, number_of_votes, wait_min, wait_max))
+t2 = threading.Thread(target=vote, args=(poll_id, answer_id, number_of_votes, wait_min, wait_max))
+
+t3 = threading.Thread(target=vote, args=(poll_id, answer_id, number_of_votes, wait_min, wait_max))
+
+
+t1.start()
+
+t2.start()
+
+t3.start()
+
+
+t1.join()
+t2.join()
+t3.join()
+
+
 vote(poll_id, answer_id, number_of_votes, wait_min, wait_max)
